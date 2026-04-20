@@ -26,7 +26,7 @@ jobs:
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>NaoDec — Documents</title>
+            <title>NaoDec — Wiring and Schematics Index</title>
             <style>
               :root {
                 color-scheme: light dark;
@@ -62,7 +62,7 @@ jobs:
             </style>
           </head>
           <body>
-            <h1>NaoDec — Documents</h1>
+            <h1>NaoDec — Wiring and Schematics Index</h1>
             <p>Rendered HTML documents in this repository. Click to open.</p>
             <ul>
           HEAD
