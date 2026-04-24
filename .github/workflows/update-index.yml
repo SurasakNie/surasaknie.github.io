@@ -1,0 +1,108 @@
+name: Update project-index/index.html
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate project-index/index.html
+        id: gen
+        run: |
+          set -euo pipefail
+          cd project-index
+          tmp=$(mktemp)
+          {
+            cat <<'HEAD'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Project Index</title>
+            <style>
+              :root {
+                color-scheme: light dark;
+                --bg:        #ffffff;
+                --fg:        #222222;
+                --muted:     #888888;
+                --rule:      #dddddd;
+                --link:      #0645ad;
+                --link-hover:#0b63d6;
+                --code-bg:   rgba(128,128,128,0.15);
+              }
+              @media (prefers-color-scheme: dark) {
+                :root {
+                  --bg:        #0b1113;
+                  --fg:        #e6edef;
+                  --muted:     #8eb5b8;
+                  --rule:      rgba(142, 181, 184, 0.25);
+                  --link:      #88e2d6;
+                  --link-hover:#eaddaa;
+                  --code-bg:   rgba(142, 181, 184, 0.15);
+                }
+              }
+              body { font-family: system-ui, sans-serif; max-width: 720px;
+                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6;
+                     background: var(--bg); color: var(--fg); }
+              h1, h2 { border-bottom: 1px solid var(--rule); padding-bottom: .4rem; }
+              h2 { margin-top: 2.5rem; font-size: 1.15rem; }
+              ul { padding-left: 1.2rem; }
+              li { margin: .3rem 0; }
+              a { color: var(--link); text-decoration: none; }
+              a:hover { color: var(--link-hover); text-decoration: underline; }
+              footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+              code { background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+            </style>
+          </head>
+          <body>
+            <h1>Project Index</h1>
+            <p>Hub page — private overview of all projects.</p>
+
+            <h2>Projects</h2>
+            <ul>
+              <li><a href="/naodec/">NaoDec — Wiring and Schematics</a></li>
+              <li><a href="/dronekyll/">Dronekyll — Product</a></li>
+            </ul>
+
+            <h2>Documents in this folder</h2>
+            <ul>
+          HEAD
+            count=0
+            for f in $(ls *.html 2>/dev/null | grep -v '^index\.html$' | sort); do
+              printf '    <li><a href="%s">%s</a></li>\n' "$f" "$f"
+              count=$((count + 1))
+            done
+            if [ "$count" -eq 0 ]; then
+              printf '    <li><em>(none yet — add .html files to <code>project-index/</code> and they will appear here)</em></li>\n'
+            fi
+            cat <<'TAIL'
+            </ul>
+            <footer>Auto-generated — see <code>.github/workflows/update-index.yml</code>.</footer>
+          </body>
+          </html>
+          TAIL
+          } > "$tmp"
+
+          if ! cmp -s "$tmp" index.html 2>/dev/null; then
+            mv "$tmp" index.html
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.gen.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add project-index/index.html
+          git commit -m "chore: regenerate project-index/index.html"
+          git push
