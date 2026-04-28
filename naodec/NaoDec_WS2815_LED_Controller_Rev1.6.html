@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NaoDec WS2815 LED Controller — 12VDC — Rev 1.6</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+  :root {
+    --bg-dark:         #060a0b;
+    --bg-panel:        rgba(10, 18, 20, 0.95);
+    --wire-12v:        #eaddaa;
+    --wire-5v:         #c9a86a;
+    --wire-3v3:        #a28854;
+    --wire-gnd:        #4a6b6d;
+    --wire-data:       #88e2d6;
+    --wire-data2:      #ffffff;
+    --wire-data3:      #7cb3ff;
+    --wire-data4:      #c8a2e8;
+    --wire-data5:      #f0997b;
+    --wire-data6:      #97c459;
+    --wire-data7:      #f0d060;
+    --text-primary:    #ffffff;
+    --text-secondary:  #8eb5b8;
+    --accent:          #eaddaa;
+    --border:          rgba(74, 107, 109, 0.6);
+    --comp-fill:       #0f1a1c;
+    --comp-stroke:     #4a6b6d;
+    --pin-dot:         #88e2d6;
+    --warn:            #ff5555;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Roboto', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  .schematic-container {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+  }
+  .schematic-container.grabbing { cursor: grabbing; }
+  .svg-wrapper {
+    transform-origin: 0 0;
+    will-change: transform;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  .comp {
+    fill: var(--comp-fill);
+    stroke: var(--comp-stroke);
+    stroke-width: 1.5;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+  .comp:hover {
+    fill: #142326;
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+  .sec-border-dash { fill:none; stroke: var(--comp-stroke); stroke-width:1.5; stroke-dasharray:6 6; opacity: 0.8; }
+  .w12v      { stroke:var(--wire-12v);  stroke-width:2.5; fill:none; }
+  .w12v-bus  { stroke:var(--wire-12v);  stroke-width:4;   fill:none; }
+  .wgnd      { stroke:var(--wire-gnd);  stroke-width:2.5; fill:none; }
+  .wgnd-bus  { stroke:var(--wire-gnd);  stroke-width:4;   fill:none; }
+  .w5v       { stroke:var(--wire-5v);   stroke-width:2;   fill:none; }
+  .wdata     { stroke:var(--wire-data); stroke-width:2;   fill:none; }
+  .wdata2    { stroke:var(--wire-data2); stroke-width:2;  fill:none; }
+  .wdata3    { stroke:var(--wire-data3); stroke-width:2;  fill:none; }
+  .wdata4    { stroke:var(--wire-data4); stroke-width:2;  fill:none; }
+  .wdata5    { stroke:var(--wire-data5); stroke-width:2;  fill:none; }
+  .wdata6    { stroke:var(--wire-data6); stroke-width:2;  fill:none; }
+  .wdata7    { stroke:var(--wire-data7); stroke-width:2;  fill:none; }
+  .wbkp-gnd  { stroke:var(--wire-gnd); stroke-width:2; fill:none; }
+  .w3v3      { stroke:var(--wire-3v3);  stroke-width:2;   fill:none; }
+  .j12v  { fill:var(--wire-12v); }
+  .jgnd  { fill:var(--wire-gnd); }
+  .j5v   { fill:var(--wire-5v);  }
+  .jdata { fill:var(--wire-data); }
+  .jdata2{ fill:var(--wire-data2); }
+  .jdata3{ fill:var(--wire-data3); }
+  .jdata4{ fill:var(--wire-data4); }
+  .jdata5{ fill:var(--wire-data5); }
+  .jdata6{ fill:var(--wire-data6); }
+  .jdata7{ fill:var(--wire-data7); }
+  .pin   { fill:var(--pin-dot); }
+  polyline[data-info], line[data-info], path[data-info] { cursor: pointer; pointer-events: visibleStroke; }
+  polyline[data-info]:hover, line[data-info]:hover, path[data-info]:hover { stroke-width: 6; filter: brightness(1.4); }
+  text { font-family: 'Roboto', sans-serif; font-weight: 500; }
+  .bold-text { font-weight: 700; }
+  .black-text { font-weight: 900; }
+  .tip {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background: #060a0b;
+    border: 1px solid var(--accent);
+    border-radius: 4px; padding: 16px 24px;
+    font-size: 15px; color: var(--text-primary);
+    opacity:0; pointer-events:none; z-index:100;
+    max-width:620px; text-align:center;
+    transition: opacity .2s, transform .2s;
+  }
+  .tip.on { opacity:1; transform:translateX(-50%) translateY(-8px); }
+  .tip .ttl { color:var(--accent); font-weight:900; margin-bottom:6px; font-size:16px; letter-spacing: 1px; text-transform: uppercase; }
+  .tip .desc { line-height: 1.5; color: var(--text-secondary); font-weight: 500; }
+  #zoom-controls {
+    position: fixed; bottom: 30px; left: 30px;
+    display: flex; gap: 6px; z-index: 100; align-items: center;
+  }
+  .zoom-btn {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    width: 40px; height: 40px; border-radius: 4px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .zoom-btn:active { transform: scale(0.95); }
+  .zoom-btn.fit-btn {
+    width: auto; padding: 0 14px; font-size: 13px; letter-spacing: 1px; font-weight: 700;
+  }
+  #zoom-level {
+    color: var(--text-primary); font-size: 13px; font-weight: 700;
+    min-width: 52px; text-align: center; padding: 0 6px; user-select: none;
+  }
+  .zoom-shortcut-hint {
+    position: fixed; bottom: 75px; left: 30px;
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    z-index: 100; letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="schematic-container" id="schematic-container">
+<div class="svg-wrapper" id="svg-wrapper">
+<svg width="2400" height="1800" viewBox="-180 -15 2420 1815" xmlns="http://www.w3.org/2000/svg" id="schematic-svg">
+
+  <!-- CANVAS REGISTRATION MARKS -->
+  <g stroke="var(--text-secondary)" stroke-width="2" opacity="0.6">
+    <path d="M -150 20 h 20 M -140 10 v 20"/>
+    <path d="M 2210 20 h 20 M 2220 10 v 20"/>
+    <path d="M -150 1840 h 20 M -140 1830 v 20"/>
+    <path d="M 2210 1840 h 20 M 2220 1830 v 20"/>
+  </g>
+
+  <g transform="translate(80, 0)">
+
+  <!-- ================================================================
+       HEADER / TITLE BLOCK
+       ================================================================ -->
+  <g id="title-block">
+    <text x="40" y="15" font-size="28" fill="var(--text-primary)" class="black-text" letter-spacing="4">N A O D E C</text>
+    <text x="40" y="38" font-size="14" fill="var(--accent)" class="bold-text" letter-spacing="1">NaoDec WS2815 LED Controller · Rev 1.6</text>
+    <text x="40" y="56" font-size="13" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">2× ESP32-S3 N16R8 (DDP) · 1× SN74AHCT245N</text>
+    <!-- Legend Box -->
+    <rect x="580" y="25" width="1420" height="46" rx="4" fill="var(--bg-panel)" stroke="var(--border)" stroke-width="1.5"/>
+    <rect x="600" y="46" width="24" height="3" rx="1.5" fill="var(--wire-12v)"/>
+    <text x="632" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">12V</text>
+    <rect x="680" y="46" width="24" height="3" rx="1.5" fill="var(--wire-5v)"/>
+    <text x="712" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">5V</text>
+    <rect x="750" y="46" width="24" height="3" rx="1.5" fill="var(--wire-gnd)"/>
+    <text x="782" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">GND</text>
+    <rect x="830" y="46" width="24" height="3" rx="1.5" fill="var(--wire-3v3)"/>
+    <text x="862" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">3.3V</text>
+    <rect x="920" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data)"/>
+    <text x="952" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH1</text>
+    <rect x="990" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data2)"/>
+    <text x="1022" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH2</text>
+    <rect x="1060" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data3)"/>
+    <text x="1092" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH3</text>
+    <rect x="1130" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data4)"/>
+    <text x="1162" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH4</text>
+    <rect x="1200" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data5)"/>
+    <text x="1232" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH5</text>
+    <rect x="1270" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data6)"/>
+    <text x="1302" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH6</text>
+    <rect x="1340" y="46" width="24" height="3" rx="1.5" fill="var(--wire-data7)"/>
+    <text x="1372" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">CH7</text>
+    <line x1="1430" y1="47.5" x2="1454" y2="47.5" stroke="var(--wire-gnd)" stroke-width="3"/>
+    <text x="1462" y="52" font-size="12" fill="var(--text-secondary)" class="bold-text" letter-spacing="1">HEAD BI → GND (first pixel only)</text>
+  </g>
+
+  <!-- WARNING -->
+  <rect x="1690" y="920" width="310" height="44" rx="2" fill="#1f0a0a" stroke="var(--warn)" stroke-width="2"/>
+  <text x="1845" y="938" font-size="12" fill="var(--warn)" text-anchor="middle" class="black-text" letter-spacing="1">⚠ NEVER CONNECT V+ RAILS TOGETHER ⚠</text>
+  <text x="1845" y="956" font-size="11" fill="var(--warn)" text-anchor="middle" class="bold-text">5V · 12V(5A) · 12V(50A) — keep positive rails isolated</text>
+
+  <!-- ================================================================
+       COMMON GROUND BUS
+       ================================================================ -->
+  <line x1="-165" y1="1020" x2="2040" y2="1020" class="wgnd-bus"/>
+  <text x="2030" y="1010" font-size="15" fill="var(--wire-gnd)" text-anchor="end" class="black-text" letter-spacing="3">── COMMON GROUND BUS ──</text>
+
+  <!-- ================================================================
+       MAC MINI (Host System) & PSU 5V 3A
+       ================================================================ -->
+  <rect x="-170" y="605" width="140" height="70" class="comp" rx="2"
+        data-info="Mac mini|Host Controller|Sends WLED/Art-Net data via USB-C to UART"/>
+  <text x="-100" y="637" font-size="16" fill="var(--text-primary)" text-anchor="middle" class="black-text" letter-spacing="1">Mac mini</text>
+  <text x="-100" y="655" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">Host System</text>
+
+  <!-- USB Type-C Cable to UART -->
+  <polyline points="-30,640 125,640 125,582" stroke="var(--text-secondary)" stroke-width="2.5" fill="none" data-info="USB-C to UART|Mac mini → ESP32-S3 Master UART port|WLED / Art-Net data"/>
+  <text x="10" y="633" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text" letter-spacing="1">USB-C to UART</text>
+
+  <!-- PSU 5V 3A -->
+  <rect x="-170" y="705" width="140" height="65" class="comp" rx="2"
+        data-info="PSU 5V 3A|15W AC-DC Supply|Powers ESP32-S3 Master Vin, Slave Vin, U2 VCC|Output: 5V @ 3A|Isolated from 12V rails"/>
+  <text x="-100" y="735" font-size="16" fill="var(--wire-5v)" text-anchor="middle" class="black-text" letter-spacing="1">PSU 5V 3A</text>
+  <text x="-100" y="755" font-size="12" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">15W · Logic Power</text>
+  <text x="5" y="728" font-size="13" fill="var(--wire-5v)" text-anchor="middle" class="bold-text">+5V</text>
+
+  <circle cx="-30" cy="735" r="4.5" class="j5v"/>
+  <circle cx="-30" cy="755" r="4.5" class="jgnd"/>
+
+  <!-- ================================================================
+       DASHED BOX — Controller PCB Assembly (ESP32s + U2 + R1–R7)
+       ================================================================ -->
+  <rect x="50" y="135" width="810" height="875" class="sec-border-dash" rx="4"/>
+  <text x="65" y="152" font-size="14" fill="var(--text-secondary)" letter-spacing="2" class="black-text">CONTROLLER PCB ASSEMBLY — MASTER + SLAVE + U2 + R1–R7</text>
+
+  <!-- ================================================================
+       ESP32-S3-WROOM-1 N16R8 (MASTER)
+       ================================================================ -->
+  <rect x="65" y="158" width="180" height="35" rx="2" fill="#1a160a" stroke="var(--wire-5v)" stroke-width="2"/>
+  <text x="155" y="173" font-size="11" fill="var(--wire-5v)" text-anchor="middle" class="black-text" letter-spacing="1">⚠ AVOID GPIO 0,3,45,46</text>
+  <text x="155" y="186" font-size="10" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">Strapping pins — boot conflict</text>
+
+  <rect x="65" y="300" width="180" height="282" class="comp" rx="2"
+        data-info="ESP32-S3 (Master)|Main Controller — Calculates all FX|Sends DDP Sync to Slave via Wi-Fi|GPIO1 → CH1 (U2 A1)|GPIO4 → CH2 (U2 A2)|GPIO5 → CH3 (U2 A3)|GPIO6 → CH4 (U2 A4)|Running WLED firmware"/>
+  <text x="155" y="445" font-size="20" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">ESP32-S3</text>
+  <text x="155" y="463" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text" letter-spacing="1">WROOM-1 N16R8</text>
+  <text x="155" y="483" font-size="14" fill="#60a5fa" text-anchor="middle" class="black-text">WLED MASTER</text>
+
+  <!-- Master Pins Left Edge -->
+  <circle cx="65" cy="340" r="3" class="pin"/>
+  <text x="75" y="345" font-size="13" fill="var(--wire-data2)" text-anchor="start" class="bold-text">GPIO4</text>
+  <circle cx="65" cy="358" r="3" class="pin"/>
+  <text x="75" y="363" font-size="13" fill="var(--wire-data3)" text-anchor="start" class="bold-text">GPIO5</text>
+  <circle cx="65" cy="376" r="3" class="pin"/>
+  <text x="75" y="381" font-size="13" fill="var(--wire-data4)" text-anchor="start" class="bold-text">GPIO6</text>
+
+  <circle cx="65" cy="563" r="3" class="pin"/>
+  <text x="75" y="568" font-size="13" fill="var(--wire-5v)" text-anchor="start" class="bold-text">5V0</text>
+  <circle cx="65" cy="575" r="3" class="pin"/>
+  <text x="75" y="580" font-size="13" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">GND</text>
+
+  <!-- Master Pins Right Edge -->
+  <circle cx="245" cy="330" r="3" class="pin"/>
+  <text x="235" y="335" font-size="13" fill="var(--wire-data)" text-anchor="end" class="bold-text">GPIO1</text>
+
+  <!-- Physical Ports (Bottom) — balanced around center x=155 -->
+  <rect x="105" y="582" width="40" height="16" rx="1" fill="#1a1a1a" stroke="var(--comp-stroke)" stroke-width="1"/>
+  <text x="125" y="594" font-size="10" fill="var(--text-secondary)" text-anchor="middle">UART</text>
+  <rect x="165" y="582" width="40" height="16" rx="1" fill="#1a1a1a" stroke="var(--comp-stroke)" stroke-width="1"/>
+  <text x="185" y="594" font-size="10" fill="var(--text-secondary)" text-anchor="middle">USB</text>
+
+  <!-- ================================================================
+       DDP CONNECTION LINE — centered between UART and USB
+       ================================================================ -->
+  <polyline points="155,582 155,650" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6 4" fill="none"/>
+  <text x="165" y="620" font-size="12" fill="#60a5fa" class="bold-text">DDP (Wi-Fi)</text>
+
+  <!-- ================================================================
+       ESP32-S3-WROOM-1 N16R8 (SLAVE)
+       ================================================================ -->
+  <rect x="65" y="650" width="180" height="282" class="comp" rx="2"
+        data-info="ESP32-S3 (Slave)|DDP Receiver — No FX Calculation|Receives pixel data from Master via Wi-Fi|GPIO4 → CH5 (U2 A5)|GPIO5 → CH6 (U2 A6)|GPIO6 → CH7 (U2 A7)|Running WLED firmware (DDP mode)"/>
+  <text x="155" y="795" font-size="20" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">ESP32-S3</text>
+  <text x="155" y="813" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text" letter-spacing="1">WROOM-1 N16R8</text>
+  <text x="155" y="833" font-size="14" fill="#a855f7" text-anchor="middle" class="black-text">WLED SLAVE (DDP)</text>
+
+  <!-- Slave Pins Left Edge -->
+  <circle cx="65" cy="690" r="3" class="pin"/>
+  <text x="75" y="695" font-size="13" fill="var(--wire-data5)" text-anchor="start" class="bold-text">GPIO4</text>
+  <circle cx="65" cy="710" r="3" class="pin"/>
+  <text x="75" y="715" font-size="13" fill="var(--wire-data6)" text-anchor="start" class="bold-text">GPIO5</text>
+  <circle cx="65" cy="730" r="3" class="pin"/>
+  <text x="75" y="735" font-size="13" fill="var(--wire-data7)" text-anchor="start" class="bold-text">GPIO6</text>
+
+  <circle cx="65" cy="913" r="3" class="pin"/>
+  <text x="75" y="918" font-size="13" fill="var(--wire-5v)" text-anchor="start" class="bold-text">5V0</text>
+  <circle cx="65" cy="925" r="3" class="pin"/>
+  <text x="75" y="930" font-size="13" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">GND</text>
+
+  <!-- Physical Ports (Bottom) — aligned with Master -->
+  <rect x="105" y="932" width="40" height="16" rx="1" fill="#1a1a1a" stroke="var(--comp-stroke)" stroke-width="1"/>
+  <text x="125" y="944" font-size="10" fill="var(--text-secondary)" text-anchor="middle">UART</text>
+  <rect x="165" y="932" width="40" height="16" rx="1" fill="#1a1a1a" stroke="var(--comp-stroke)" stroke-width="1"/>
+  <text x="185" y="944" font-size="10" fill="var(--text-secondary)" text-anchor="middle">USB</text>
+
+  <!-- ================================================================
+       U2 — SN74AHCT245N (Octal Bus Transceiver — CH 1–6)
+       ================================================================ -->
+  <rect x="390" y="270" width="160" height="290" class="comp" rx="2"
+        data-info="U2 — SN74AHCT245N|Octal Bus Transceiver / Level Shifter|8-ch bidirectional · 7 used · 1 spare|DIR (pin 1) = VCC → A-to-B direction|OE (pin 19) = GND → always enabled|VCC (pin 20) = 5V|GND (pin 10) = common ground|CH1: M_GPIO1 → A1(2) → B1(18)|CH2: M_GPIO4 → A2(3) → B2(17)|CH3: M_GPIO5 → A3(4) → B3(16)|CH4: M_GPIO6 → A4(5) → B4(15)|CH5: S_GPIO4 → A5(6) → B5(14)|CH6: S_GPIO5 → A6(7) → B6(13)|CH7: S_GPIO6 → A7(8) → B7(12)|A8(9) → GND · B8(11) = N/C"/>
+  <text x="470" y="300" font-size="15" fill="var(--accent)" text-anchor="middle" class="black-text">SN74AHCT245N</text>
+  <text x="470" y="317" font-size="13" fill="var(--text-primary)" text-anchor="middle" class="bold-text" letter-spacing="1">U2 · CH 1–7</text>
+  <text x="470" y="334" font-size="12" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">3.3V → 5V Logic</text>
+
+  <!-- U2 Left Pins (1-10: DIR, A1-A8, GND) -->
+  <circle cx="390" cy="355" r="3" class="pin"/>
+  <text x="400" y="360" font-size="11" fill="var(--wire-5v)" text-anchor="start" class="bold-text">DIR →5V</text>
+  <circle cx="390" cy="375" r="3" class="pin"/>
+  <text x="400" y="380" font-size="11" fill="var(--wire-data)" text-anchor="start" class="bold-text">A1 (CH1)</text>
+  <circle cx="390" cy="395" r="3" class="pin"/>
+  <text x="400" y="400" font-size="11" fill="var(--wire-data2)" text-anchor="start" class="bold-text">A2 (CH2)</text>
+  <circle cx="390" cy="415" r="3" class="pin"/>
+  <text x="400" y="420" font-size="11" fill="var(--wire-data3)" text-anchor="start" class="bold-text">A3 (CH3)</text>
+  <circle cx="390" cy="435" r="3" class="pin"/>
+  <text x="400" y="440" font-size="11" fill="var(--wire-data4)" text-anchor="start" class="bold-text">A4 (CH4)</text>
+  <circle cx="390" cy="455" r="3" class="pin"/>
+  <text x="400" y="460" font-size="11" fill="var(--wire-data5)" text-anchor="start" class="bold-text">A5 (CH5)</text>
+  <circle cx="390" cy="475" r="3" class="pin"/>
+  <text x="400" y="480" font-size="11" fill="var(--wire-data6)" text-anchor="start" class="bold-text">A6 (CH6)</text>
+  <circle cx="390" cy="495" r="3" class="pin"/>
+  <text x="400" y="500" font-size="11" fill="var(--wire-data7)" text-anchor="start" class="bold-text">A7 (CH7)</text>
+  <circle cx="390" cy="515" r="3" class="pin"/>
+  <text x="400" y="520" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">A8 →GND</text>
+  <circle cx="390" cy="535" r="3" class="pin"/>
+  <text x="400" y="540" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">GND</text>
+
+  <!-- U2 Right Pins (20-11: VCC, OE, B1-B8) -->
+  <circle cx="550" cy="355" r="3" class="pin"/>
+  <text x="540" y="360" font-size="11" fill="var(--wire-5v)" text-anchor="end" class="bold-text">VCC</text>
+  <circle cx="550" cy="375" r="3" class="pin"/>
+  <text x="540" y="380" font-size="11" fill="var(--wire-gnd)" text-anchor="end" class="bold-text">OE →GND</text>
+  <circle cx="550" cy="395" r="3" class="pin"/>
+  <text x="540" y="400" font-size="11" fill="var(--wire-data)" text-anchor="end" class="bold-text">B1 (CH1)</text>
+  <circle cx="550" cy="415" r="3" class="pin"/>
+  <text x="540" y="420" font-size="11" fill="var(--wire-data2)" text-anchor="end" class="bold-text">B2 (CH2)</text>
+  <circle cx="550" cy="435" r="3" class="pin"/>
+  <text x="540" y="440" font-size="11" fill="var(--wire-data3)" text-anchor="end" class="bold-text">B3 (CH3)</text>
+  <circle cx="550" cy="455" r="3" class="pin"/>
+  <text x="540" y="460" font-size="11" fill="var(--wire-data4)" text-anchor="end" class="bold-text">B4 (CH4)</text>
+  <circle cx="550" cy="475" r="3" class="pin"/>
+  <text x="540" y="480" font-size="11" fill="var(--wire-data5)" text-anchor="end" class="bold-text">B5 (CH5)</text>
+  <circle cx="550" cy="495" r="3" class="pin"/>
+  <text x="540" y="500" font-size="11" fill="var(--wire-data6)" text-anchor="end" class="bold-text">B6 (CH6)</text>
+  <circle cx="550" cy="515" r="3" class="pin"/>
+  <text x="540" y="520" font-size="11" fill="var(--wire-data7)" text-anchor="end" class="bold-text">B7 (CH7)</text>
+  <circle cx="550" cy="535" r="3" class="pin"/>
+  <text x="540" y="540" font-size="11" fill="var(--text-secondary)" text-anchor="end" class="bold-text">B8 (N/C)</text>
+
+  <!-- U2 OE Ground vertical -->
+  <polyline points="590,375 590,1020" class="wgnd" data-info="U2 OE Ground|U2 OE (pin 19) → Common Ground Bus"/>
+  <circle cx="590" cy="1020" r="4.5" class="jgnd"/>
+  <text x="590" y="1042" font-size="12" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">U2 OE</text>
+
+  <!-- ================================================================
+       POWER WIRING (5V & GND logic side)
+       ================================================================ -->
+  <!-- PSU 5V GND horizontal to shared vertical -->
+  <polyline points="-30,755 35,755" class="wgnd" data-info="PSU 5V GND|PSU 5V 3A GND → Common Ground Bus"/>
+  <circle cx="35" cy="755" r="3.5" class="jgnd"/>
+
+  <!-- Master ESP32 GND → left to shared vertical → bus -->
+  <polyline points="65,575 35,575 35,1020" class="wgnd" data-info="ESP32 Ground|Master + Slave GND → Common Ground Bus"/>
+  <circle cx="35" cy="1020" r="4.5" class="jgnd"/>
+  <text x="35" y="1042" font-size="13" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">PSU 5V</text>
+  <!-- Slave GND ties into same vertical -->
+  <polyline points="65,925 35,925" class="wgnd"/>
+  <circle cx="35" cy="925" r="3.5" class="jgnd"/>
+
+  <!-- 5V Wiring: PSU → vertical bus @ x=25 → Master Vin, Slave Vin, U2 VCC -->
+  <polyline points="-30,735 25,735" class="w5v" data-info="+5V Logic Power|PSU 5V 3A → 5V Bus"/>
+  <polyline points="25,265 25,913" class="w5v" data-info="+5V Bus|Distributes 5V to Master Vin, Slave Vin, U2 VCC"/>
+  <polyline points="25,563 65,563" class="w5v" data-info="+5V → ESP32-S3 Master Vin"/>
+  <polyline points="25,913 65,913" class="w5v" data-info="+5V → ESP32-S3 Slave Vin"/>
+  <polyline points="25,265 570,265 570,355 550,355" class="w5v" data-info="+5V → U2 VCC (pin 20)"/>
+  <circle cx="25" cy="735" r="3.5" class="j5v"/>
+  <circle cx="25" cy="563" r="3.5" class="j5v"/>
+  <circle cx="25" cy="265" r="3.5" class="j5v"/>
+  <circle cx="570" cy="355" r="2.5" class="j5v"/>
+
+  <!-- DIR (pin 1) → 5V -->
+  <polyline points="390,355 375,355 375,265 570,265" class="w5v" data-info="U2 DIR → 5V|Direction = A→B (fixed)"/>
+  <circle cx="570" cy="265" r="2.5" class="j5v"/>
+
+  <!-- C7 — 100nF Ceramic Decoupling Cap -->
+  <circle cx="570" cy="195" r="2.5" class="j5v"/>
+  <polyline points="570,265 570,195 620,195" class="w5v"/>
+  <rect x="620" y="184" width="48" height="22" class="comp" rx="2"
+        data-info="C7 — 100nF Ceramic|Decoupling Capacitor|U2 VCC (pin 20) to GND (pin 10)|Prevents CMOS latch-up from fast edge switching"/>
+  <text x="644" y="194" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C7</text>
+  <text x="644" y="203" font-size="7" fill="var(--text-secondary)" text-anchor="middle">100nF</text>
+  <polyline points="668,195 685,195 685,375 590,375" class="wgnd"/>
+
+  <!-- U2 GNDs (left side: A8, GND pin) -->
+  <polyline points="390,515 340,515" class="wgnd"/>
+  <circle cx="340" cy="515" r="2.5" class="jgnd"/>
+  <polyline points="390,535 340,535" class="wgnd"/>
+  <circle cx="340" cy="535" r="2.5" class="jgnd"/>
+
+  <!-- U2 OE (right side) → right GND bus -->
+  <polyline points="550,375 590,375" class="wgnd"/>
+  <circle cx="590" cy="375" r="2.5" class="jgnd"/>
+
+  <!-- Shared GND vertical bus -->
+  <polyline points="340,515 340,1020" class="wgnd" data-info="U2 Ground Bus|U2 A8+GND → Common Ground Bus"/>
+  <circle cx="340" cy="1020" r="4.5" class="jgnd"/>
+  <text x="340" y="1040" font-size="12" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">U2</text>
+
+  <!-- ================================================================
+       DATA WIRING — ESP32 (Master/Slave) to SN74AHCT245N
+       ================================================================ -->
+  <!-- Master CH1 (GPIO1) -->
+  <polyline points="245,330 320,330 320,375 390,375" class="wdata" data-info="CH1 Signal · 3.3V|Master GPIO1 → U2 A1 (pin 2)|⚠ CH1 feeds a 20m run — verify signal integrity"/>
+  <text x="282" y="325" font-size="11" fill="var(--wire-data)" text-anchor="middle" class="black-text">CH1 (GPIO1)</text>
+
+  <!-- Master CH2 (GPIO4) -->
+  <polyline points="65,340 60,340 60,282 350,282 350,395 390,395" class="wdata2" data-info="CH2 Signal · 3.3V|Master GPIO4 → U2 A2 (pin 3)"/>
+  <text x="290" y="279" font-size="10" fill="var(--wire-data2)" text-anchor="start" class="black-text">CH2 (GPIO4)</text>
+
+  <!-- Master CH3 (GPIO5) -->
+  <polyline points="65,358 40,358 40,264 355,264 355,415 390,415" class="wdata3" data-info="CH3 Signal · 3.3V|Master GPIO5 → U2 A3 (pin 4)"/>
+  <text x="250" y="261" font-size="10" fill="var(--wire-data3)" text-anchor="start" class="black-text">CH3 (GPIO5)</text>
+
+  <!-- Master CH4 (GPIO6) -->
+  <polyline points="65,376 20,376 20,246 360,246 360,435 390,435" class="wdata4" data-info="CH4 Signal · 3.3V|Master GPIO6 → U2 A4 (pin 5)"/>
+  <text x="210" y="243" font-size="10" fill="var(--wire-data4)" text-anchor="start" class="black-text">CH4 (GPIO6)</text>
+
+  <!-- Slave CH5 (GPIO4) -->
+  <polyline points="65,690 -10,690 -10,985 310,985 310,455 390,455" class="wdata5" data-info="CH5 Signal · 3.3V|Slave GPIO4 → U2 A5 (pin 6)"/>
+  <text x="180" y="981" font-size="10" fill="var(--wire-data5)" text-anchor="start" class="black-text">CH5 (S_GPIO4)</text>
+
+  <!-- Slave CH6 (GPIO5) -->
+  <polyline points="65,710 10,710 10,1000 325,1000 325,475 390,475" class="wdata6" data-info="CH6 Signal · 3.3V|Slave GPIO5 → U2 A6 (pin 7)"/>
+  <text x="180" y="996" font-size="10" fill="var(--wire-data6)" text-anchor="start" class="black-text">CH6 (S_GPIO5)</text>
+
+  <!-- Slave CH7 (GPIO6) -->
+  <polyline points="65,730 -25,730 -25,970 295,970 295,495 390,495" class="wdata7" data-info="CH7 Signal · 3.3V|Slave GPIO6 → U2 A7 (pin 8)"/>
+  <text x="140" y="966" font-size="10" fill="var(--wire-data7)" text-anchor="start" class="black-text">CH7 (S_GPIO6)</text>
+
+  <!-- ================================================================
+       DATA OUTPUTS — SN74AHCT245N B-side → Resistors
+       ================================================================ -->
+  <polyline points="550,395 600,395 600,230 760,230" class="wdata" data-info="CH1 Buffered · 5V|U2 B1 (pin 18) → R1 47Ω|⚠ Drives 20m cable — shielded twisted pair recommended"/>
+  <polyline points="550,415 610,415 610,295 760,295" class="wdata2" data-info="CH2 Buffered · 5V|U2 B2 (pin 17) → R2 47Ω"/>
+  <polyline points="550,435 620,435 620,395 760,395" class="wdata3" data-info="CH3 Buffered · 5V|U2 B3 (pin 16) → R3 47Ω"/>
+  <polyline points="550,455 630,455 630,495 760,495" class="wdata4" data-info="CH4 Buffered · 5V|U2 B4 (pin 15) → R4 47Ω"/>
+  <polyline points="550,475 640,475 640,595 760,595" class="wdata5" data-info="CH5 Buffered · 5V|U2 B5 (pin 14) → R5 47Ω"/>
+  <polyline points="550,495 650,495 650,695 760,695" class="wdata6" data-info="CH6 Buffered · 5V|U2 B6 (pin 13) → R6 47Ω"/>
+  <polyline points="550,515 660,515 660,795 760,795" class="wdata7" data-info="CH7 Buffered · 5V|U2 B7 (pin 12) → R7 47Ω"/>
+
+  <!-- ================================================================
+       RESISTORS R1–R7 (47Ω) — uniform source-term
+       ================================================================ -->
+  <rect x="760" y="216" width="90" height="28" class="comp" rx="2"
+        data-info="R1 — 47Ω Resistor|¼W Metal Film|Signal damping on CH1|20m cable run|Mount on controller PCB adjacent to U2 pin 18 (source-end termination, ≤20mm)"/>
+  <text x="805" y="235" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R1 47Ω</text>
+
+  <rect x="760" y="281" width="90" height="28" class="comp" rx="2"
+        data-info="R2 — 47Ω Resistor|¼W Metal Film|Signal damping on CH2|8m cable run|Mount adjacent to U2 pin 17 (source-end, ≤20mm)"/>
+  <text x="805" y="300" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R2 47Ω</text>
+
+  <rect x="760" y="381" width="90" height="28" class="comp" rx="2"
+        data-info="R3 — 47Ω Resistor|¼W Metal Film|Signal damping on CH3|8m cable run|Mount adjacent to U2 pin 16 (source-end, ≤20mm)"/>
+  <text x="805" y="400" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R3 47Ω</text>
+
+  <rect x="760" y="481" width="90" height="28" class="comp" rx="2"
+        data-info="R4 — 47Ω Resistor|¼W Metal Film|Signal damping on CH4|8m cable run|Mount adjacent to U2 pin 15 (source-end, ≤20mm)"/>
+  <text x="805" y="500" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R4 47Ω</text>
+
+  <rect x="760" y="581" width="90" height="28" class="comp" rx="2"
+        data-info="R5 — 47Ω Resistor|¼W Metal Film|Signal damping on CH5|8m cable run|Mount adjacent to U2 pin 14 (source-end, ≤20mm)"/>
+  <text x="805" y="600" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R5 47Ω</text>
+
+  <rect x="760" y="681" width="90" height="28" class="comp" rx="2"
+        data-info="R6 — 47Ω Resistor|¼W Metal Film|Signal damping on CH6|8m cable run|Mount adjacent to U2 pin 13 (source-end, ≤20mm)"/>
+  <text x="805" y="700" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R6 47Ω</text>
+
+  <rect x="760" y="781" width="90" height="28" class="comp" rx="2"
+        data-info="R7 — 47Ω Resistor|¼W Metal Film|Signal damping on CH7|8m cable run|Mount adjacent to U2 pin 12 (source-end, ≤20mm)"/>
+  <text x="805" y="800" font-size="12" fill="var(--text-primary)" text-anchor="middle" class="black-text">R7 47Ω</text>
+
+  <!-- R → Strip DI wiring + BI tied to GND -->
+  <polyline points="850,230 1170,230 1170,165 1440,165" class="wdata" data-info="CH1 Data → Strip #1|R1 47Ω → Strip #1 DI (60 LEDs)|⚠ 20m run — single-ended 800kHz near limit; bench-verify"/>
+  <polyline points="1440,185 1420,185 1420,215" class="wbkp-gnd" data-info="CH1 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#1 backup input tied to ground"/>
+  <circle cx="1420" cy="215" r="2.5" class="jgnd"/>
+
+  <path d="M 850,295 L 1205,295 A 5,5 0 0,0 1215,295 L 1440,295" class="wdata2" data-info="CH2 Data → Strip #2|R2 47Ω → Strip #2 DI (280 LEDs)"/>
+  <polyline points="1440,315 1420,315 1420,340" class="wbkp-gnd" data-info="CH2 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#2 backup input tied to ground"/>
+  <circle cx="1420" cy="340" r="2.5" class="jgnd"/>
+
+  <path d="M 850,395 L 1205,395 A 5,5 0 0,0 1215,395 L 1235,395 A 5,5 0 0,0 1245,395 L 1395,395 A 5,5 0 0,0 1405,395 L 1440,395" class="wdata3" data-info="CH3 Data → Strip #3|R3 47Ω → Strip #3 DI (280 LEDs)"/>
+  <polyline points="1440,415 1420,415 1420,440" class="wbkp-gnd" data-info="CH3 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#3 backup input tied to ground"/>
+  <circle cx="1420" cy="440" r="2.5" class="jgnd"/>
+
+  <path d="M 850,495 L 1205,495 A 5,5 0 0,0 1215,495 L 1235,495 A 5,5 0 0,0 1245,495 L 1265,495 A 5,5 0 0,0 1275,495 L 1395,495 A 5,5 0 0,0 1405,495 L 1440,495" class="wdata4" data-info="CH4 Data → Strip #4|R4 47Ω → Strip #4 DI (280 LEDs)"/>
+  <polyline points="1440,515 1420,515 1420,540" class="wbkp-gnd" data-info="CH4 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#4 backup input tied to ground"/>
+  <circle cx="1420" cy="540" r="2.5" class="jgnd"/>
+
+  <path d="M 850,595 L 1205,595 A 5,5 0 0,0 1215,595 L 1235,595 A 5,5 0 0,0 1245,595 L 1265,595 A 5,5 0 0,0 1275,595 L 1295,595 A 5,5 0 0,0 1305,595 L 1395,595 A 5,5 0 0,0 1405,595 L 1440,595" class="wdata5" data-info="CH5 Data → Strip #5|R5 47Ω → Strip #5 DI (280 LEDs)"/>
+  <polyline points="1440,615 1420,615 1420,640" class="wbkp-gnd" data-info="CH5 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#5 backup input tied to ground"/>
+  <circle cx="1420" cy="640" r="2.5" class="jgnd"/>
+
+  <path d="M 850,695 L 1205,695 A 5,5 0 0,0 1215,695 L 1235,695 A 5,5 0 0,0 1245,695 L 1265,695 A 5,5 0 0,0 1275,695 L 1295,695 A 5,5 0 0,0 1305,695 L 1325,695 A 5,5 0 0,0 1335,695 L 1395,695 A 5,5 0 0,0 1405,695 L 1440,695" class="wdata6" data-info="CH6 Data → Strip #6|R6 47Ω → Strip #6 DI (280 LEDs)"/>
+  <polyline points="1440,715 1420,715 1420,740" class="wbkp-gnd" data-info="CH6 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#6 backup input tied to ground"/>
+  <circle cx="1420" cy="740" r="2.5" class="jgnd"/>
+
+  <path d="M 850,795 L 1205,795 A 5,5 0 0,0 1215,795 L 1235,795 A 5,5 0 0,0 1245,795 L 1265,795 A 5,5 0 0,0 1275,795 L 1295,795 A 5,5 0 0,0 1305,795 L 1325,795 A 5,5 0 0,0 1335,795 L 1350,795 A 5,5 0 0,0 1360,795 L 1395,795 A 5,5 0 0,0 1405,795 L 1440,795" class="wdata7" data-info="CH7 Data → Strip #7|R7 47Ω → Strip #7 DI (280 LEDs)"/>
+  <polyline points="1440,815 1420,815 1420,840" class="wbkp-gnd" data-info="CH7 Head BI → GND|FIRST pixel only — downstream pixels keep BI ← prev DO chain on Strip#7 backup input tied to ground"/>
+  <circle cx="1420" cy="840" r="2.5" class="jgnd"/>
+
+  <!-- ================================================================
+       C1 — 1000µF 25V + PSU 12V 5A
+       ================================================================ -->
+  <rect x="900" y="120" width="68" height="60" class="comp" rx="2"
+        data-info="C1 — 1000µF 25V|Electrolytic Capacitor|Smooths inrush on 12V 5A rail"/>
+  <text x="934" y="147" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="black-text">C1</text>
+  <text x="934" y="163" font-size="10" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">1000µF 25V</text>
+  <circle cx="934" cy="130" r="3.5" class="j12v"/>
+  <circle cx="934" cy="170" r="3.5" class="jgnd"/>
+
+  <rect x="990" y="105" width="170" height="90" class="comp" rx="2"
+        data-info="PSU 12V 5A|60W AC-DC Supply|Strip #1 Vertex LED set|Max draw: ~0.9A|Optional injection upgrade: 2× 12V 5A — head + LED #31|ISOLATED — V+ must not bridge"/>
+  <text x="1075" y="138" font-size="16" fill="var(--wire-12v)" text-anchor="middle" class="black-text" letter-spacing="1">PSU 12V 5A</text>
+  <text x="1075" y="158" font-size="12" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">60W · Vertex Power Rail</text>
+  <text x="1075" y="175" font-size="11" fill="var(--accent)" text-anchor="middle" class="black-text">⚡ ISOLATED</text>
+  <circle cx="990" cy="130" r="3" class="pin"/>
+  <circle cx="990" cy="170" r="3" class="pin"/>
+
+  <!-- F1 inline fuse -->
+  <polyline points="990,130 934,130 934,100 1175,100 1175,145 1300,145" class="w12v" data-info="+12V Strip #1 Power|PSU 12V 5A → F1 7.5A → C1 → Strip #1 +12V"/>
+  <rect x="1300" y="132" width="55" height="26" class="comp" rx="2"
+        data-info="F1 — 7.5A ATC/ATO Blade Fuse|Inline fuse for Strip #1|Vertex LED set protection"/>
+  <text x="1327" y="149" font-size="11" fill="var(--warn)" text-anchor="middle" class="bold-text">F1 7.5A</text>
+  <polyline points="1355,145 1440,145" class="w12v"/>
+
+  <polyline points="990,170 934,170 934,215 965,215 965,1020" class="wgnd" data-info="PSU 12V 5A Ground|PSU1 GND → Common Ground Bus"/>
+  <polyline points="965,215 1440,215" class="wgnd"/>
+  <circle cx="965" cy="215" r="3.5" class="jgnd"/>
+  <circle cx="965" cy="1020" r="4.5" class="jgnd"/>
+  <text x="965" y="1040" font-size="12" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">PSU1</text>
+
+  <!-- ================================================================
+       STRIP 1 — VERTEX LED SET
+       ================================================================ -->
+  <rect x="1420" y="110" width="360" height="120" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="125" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 1 — VERTEX LED SET</text>
+  <rect x="1440" y="135" width="320" height="85" class="comp" rx="2"
+        data-info="Strip #1 — Vertex LED Set|60 × WS2815 12V NeoPixels|20 vertex positions × 3 LEDs|Max ~0.9A|16 AWG power"/>
+  <text x="1600" y="165" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Vertex LED Set</text>
+  <text x="1600" y="185" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text" letter-spacing="1">60 × WS2815 (20 sets × 3)</text>
+  <text x="1600" y="240" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">WLED Out 1 · M-GPIO1 · 16AWG pwr</text>
+  <circle cx="1440" cy="145" r="3" class="pin"/>
+  <text x="1448" y="149" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="165" r="3" class="pin"/>
+  <text x="1448" y="169" font-size="11" fill="var(--wire-data)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="185" r="3" class="pin"/>
+  <text x="1448" y="189" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="215" r="3" class="pin"/>
+  <text x="1448" y="219" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- ================================================================
+       FB1 — 6-ch ATC/ATO Fuse Block + PSU 12V 50A
+       ================================================================ -->
+  <rect x="980" y="860" width="170" height="100" class="comp" rx="2"
+        data-info="PSU 12V 50A|600W AC-DC Supply|Shared rail for Strips #2–#7|Total max: ~25.2A (6 × 4.2A)|Fused via FB1 ATC/ATO block (7.5A per branch)|ISOLATED — V+ must not bridge"/>
+  <text x="1065" y="893" font-size="16" fill="var(--wire-12v)" text-anchor="middle" class="black-text" letter-spacing="1">PSU 12V 50A</text>
+  <text x="1065" y="913" font-size="12" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">600W · Fused to Strips #2–#7</text>
+  <text x="1065" y="930" font-size="11" fill="var(--accent)" text-anchor="middle" class="black-text">⚡ ISOLATED</text>
+  <circle cx="1150" cy="905" r="3" class="pin"/>
+  <text x="1142" y="901" font-size="10" fill="var(--wire-12v)" text-anchor="end" class="bold-text">+12V</text>
+  <circle cx="1150" cy="940" r="3" class="pin"/>
+  <text x="1142" y="944" font-size="10" fill="var(--wire-gnd)" text-anchor="end" class="bold-text">GND</text>
+
+  <polyline points="1150,940 1165,940 1165,1020" class="wgnd" data-info="PSU 12V 50A Ground|PSU2 GND → Common Ground Bus"/>
+  <circle cx="1165" cy="1020" r="4.5" class="jgnd"/>
+  <text x="1165" y="1042" font-size="12" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">PSU 50A</text>
+
+  <rect x="1180" y="860" width="200" height="100" class="comp" rx="2"
+        data-info="FB1 — 6-ch ATC/ATO Fuse Block|Automotive blade fuse block|6× 7.5A fuses (one per strip branch)|F2→#2 · F3→#3 · F4→#4 · F5→#5 · F6→#6 · F7→#7"/>
+  <text x="1280" y="890" font-size="14" fill="var(--warn)" text-anchor="middle" class="black-text">FUSE BLOCK</text>
+  <text x="1280" y="908" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">6-ch ATC/ATO</text>
+  <text x="1280" y="924" font-size="10" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">F2–F7 · 7.5A each</text>
+  <text x="1280" y="950" font-size="9" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">F2   F3   F4   F5   F6   F7</text>
+
+  <circle cx="1180" cy="910" r="3" class="pin"/>
+  <!-- NTC1 — 10Ω/10A inrush limiter, series with 12V/50A rail -->
+  <rect x="1153" y="890" width="24" height="30" class="comp" rx="2"
+        data-info="NTC1 — 10Ω / 10A Inrush Limiter|Series with 12V/50A rail|Protects PSU soft-start and upstream breaker|From combined inrush of 7× 1000µF bypass caps|Warm resistance &lt;0.1Ω — negligible V-drop at steady state|Mount with airflow; runs warm"/>
+  <text x="1165" y="905" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">NTC1</text>
+  <text x="1165" y="915" font-size="7" fill="var(--text-secondary)" text-anchor="middle">10Ω/10A</text>
+  <polyline points="1150,905 1153,905" class="w12v" data-info="+12V PSU→NTC1|PSU 12V 50A → NTC1 Inrush Limiter"/>
+  <polyline points="1177,905 1180,905 1180,910" class="w12v" data-info="+12V NTC1→FB|NTC1 → FB1 Fuse Block Input"/>
+
+  <circle cx="1210" cy="860" r="3" class="j12v"/>
+  <circle cx="1240" cy="860" r="3" class="j12v"/>
+  <circle cx="1270" cy="860" r="3" class="j12v"/>
+  <circle cx="1300" cy="860" r="3" class="j12v"/>
+  <circle cx="1330" cy="860" r="3" class="j12v"/>
+  <circle cx="1355" cy="860" r="3" class="j12v"/>
+
+  <polyline points="1210,860 1210,275 1440,275" class="w12v" data-info="F2 → Strip #2 +12V|FB1 Fuse 2 (7.5A) → Strip #2 +12V|12 AWG branch"/>
+  <path d="M 1240,860 L 1240,375 L 1395,375 A 5,5 0 0,0 1405,375 L 1440,375" class="w12v" data-info="F3 → Strip #3 +12V|FB1 Fuse 3 (7.5A) → Strip #3 +12V|12 AWG branch"/>
+  <path d="M 1270,860 L 1270,475 L 1395,475 A 5,5 0 0,0 1405,475 L 1440,475" class="w12v" data-info="F4 → Strip #4 +12V|FB1 Fuse 4 (7.5A) → Strip #4 +12V|12 AWG branch"/>
+  <path d="M 1300,860 L 1300,575 L 1395,575 A 5,5 0 0,0 1405,575 L 1440,575" class="w12v" data-info="F5 → Strip #5 +12V|FB1 Fuse 5 (7.5A) → Strip #5 +12V|12 AWG branch"/>
+  <path d="M 1330,860 L 1330,675 L 1395,675 A 5,5 0 0,0 1405,675 L 1440,675" class="w12v" data-info="F6 → Strip #6 +12V|FB1 Fuse 6 (7.5A) → Strip #6 +12V|12 AWG branch"/>
+  <path d="M 1355,860 L 1355,775 L 1395,775 A 5,5 0 0,0 1405,775 L 1440,775" class="w12v" data-info="F7 → Strip #7 +12V|FB1 Fuse 7 (7.5A) → Strip #7 +12V|12 AWG branch"/>
+
+  <!-- GND vertical distribution bus for strips 2-7 (dog-legs right around C8's GND pin at x=1409) -->
+  <polyline points="1400,316 1400,790 1413,790 1413,825 1400,825 1400,1020" class="wgnd" data-info="Strip #2–#7 GND Bus|Strips GND return → Common Ground Bus"/>
+  <polyline points="1400,340 1440,340" class="wgnd"/>
+  <circle cx="1400" cy="340" r="3.5" class="jgnd"/>
+  <circle cx="1400" cy="440" r="2.5" class="jgnd"/>
+  <polyline points="1400,440 1440,440" class="wgnd"/>
+  <circle cx="1400" cy="540" r="2.5" class="jgnd"/>
+  <polyline points="1400,540 1440,540" class="wgnd"/>
+  <circle cx="1400" cy="640" r="2.5" class="jgnd"/>
+  <polyline points="1400,640 1440,640" class="wgnd"/>
+  <circle cx="1400" cy="740" r="2.5" class="jgnd"/>
+  <polyline points="1400,740 1440,740" class="wgnd"/>
+  <circle cx="1400" cy="840" r="2.5" class="jgnd"/>
+  <polyline points="1400,840 1440,840" class="wgnd"/>
+  <circle cx="1400" cy="1020" r="4.5" class="jgnd"/>
+  <text x="1400" y="1042" font-size="12" fill="var(--wire-gnd)" text-anchor="middle" class="bold-text">PSU2</text>
+
+  <!-- ================================================================
+       C2–C6 — Bypass Caps
+       ================================================================ -->
+  <rect x="1341" y="305" width="54" height="22" class="comp" rx="2"
+        data-info="C2 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #2 input"/>
+  <text x="1368" y="314" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C2</text>
+  <text x="1368" y="324" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <polyline points="1210,316 1341,316" class="w12v"/>
+  <polyline points="1395,316 1400,316" class="wgnd"/>
+  <circle cx="1210" cy="316" r="2.5" class="j12v"/>
+  <circle cx="1400" cy="316" r="2.5" class="jgnd"/>
+
+  <rect x="1341" y="395" width="54" height="22" class="comp" rx="2"
+        data-info="C3 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #3 input"/>
+  <text x="1368" y="404" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C3</text>
+  <text x="1368" y="414" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <polyline points="1240,406 1341,406" class="w12v"/>
+  <polyline points="1395,406 1400,406" class="wgnd"/>
+  <circle cx="1240" cy="406" r="2.5" class="j12v"/>
+  <circle cx="1400" cy="406" r="2.5" class="jgnd"/>
+
+  <rect x="1341" y="495" width="54" height="22" class="comp" rx="2"
+        data-info="C4 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #4 input"/>
+  <text x="1368" y="504" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C4</text>
+  <text x="1368" y="514" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <polyline points="1270,506 1341,506" class="w12v"/>
+  <polyline points="1395,506 1400,506" class="wgnd"/>
+  <circle cx="1270" cy="506" r="2.5" class="j12v"/>
+  <circle cx="1400" cy="506" r="2.5" class="jgnd"/>
+
+  <rect x="1341" y="595" width="54" height="22" class="comp" rx="2"
+        data-info="C5 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #5 input"/>
+  <text x="1368" y="604" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C5</text>
+  <text x="1368" y="614" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <polyline points="1300,606 1341,606" class="w12v"/>
+  <polyline points="1395,606 1400,606" class="wgnd"/>
+  <circle cx="1300" cy="606" r="2.5" class="j12v"/>
+  <circle cx="1400" cy="606" r="2.5" class="jgnd"/>
+
+  <rect x="1341" y="695" width="54" height="22" class="comp" rx="2"
+        data-info="C6 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #6 input"/>
+  <text x="1368" y="704" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C6</text>
+  <text x="1368" y="714" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <polyline points="1330,706 1341,706" class="w12v"/>
+  <polyline points="1395,706 1400,706" class="wgnd"/>
+  <circle cx="1330" cy="706" r="2.5" class="j12v"/>
+  <circle cx="1400" cy="706" r="2.5" class="jgnd"/>
+
+  <rect x="1355" y="795" width="54" height="22" class="comp" rx="2"
+        data-info="C8 — 1000µF 25V|Electrolytic Capacitor|Bypass cap at Strip #7 input"/>
+  <text x="1382" y="804" font-size="9" fill="var(--text-primary)" text-anchor="middle" class="black-text">C8</text>
+  <text x="1382" y="814" font-size="7" fill="var(--text-secondary)" text-anchor="middle">1000µF</text>
+  <!-- +12V pin sits directly on F7 riser at (1355, 806) — junction only, no stub -->
+  <circle cx="1355" cy="806" r="2.5" class="j12v"/>
+  <!-- GND pin at (1409, 806) — bus dog-legs right to meet it -->
+  <polyline points="1409,806 1413,806" class="wgnd"/>
+  <circle cx="1409" cy="806" r="2.5" class="jgnd"/>
+
+  <!-- ================================================================
+       STRIPS 2–7 (280 LEDs each)
+       ================================================================ -->
+  <rect x="1420" y="250" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="265" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 2 — EDGE SET A</text>
+  <rect x="1440" y="270" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #2 — Edge Set A|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power"/>
+  <text x="1600" y="295" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set A</text>
+  <text x="1600" y="310" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="353" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">WLED Out 2 · M-GPIO4 · 12AWG pwr</text>
+  <circle cx="1440" cy="275" r="3" class="pin"/>
+  <text x="1448" y="279" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="295" r="3" class="pin"/>
+  <text x="1448" y="299" font-size="11" fill="var(--wire-data2)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="315" r="3" class="pin"/>
+  <text x="1448" y="319" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="340" r="3" class="pin"/>
+  <text x="1448" y="344" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- STRIP 3 -->
+  <rect x="1420" y="350" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="365" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 3 — EDGE SET B</text>
+  <rect x="1440" y="370" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #3 — Edge Set B|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power"/>
+  <text x="1600" y="395" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set B</text>
+  <text x="1600" y="410" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="453" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">WLED Out 3 · M-GPIO5 · 12AWG pwr</text>
+  <circle cx="1440" cy="375" r="3" class="pin"/>
+  <text x="1448" y="379" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="395" r="3" class="pin"/>
+  <text x="1448" y="399" font-size="11" fill="var(--wire-data3)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="415" r="3" class="pin"/>
+  <text x="1448" y="419" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="440" r="3" class="pin"/>
+  <text x="1448" y="444" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- STRIP 4 -->
+  <rect x="1420" y="450" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="465" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 4 — EDGE SET C</text>
+  <rect x="1440" y="470" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #4 — Edge Set C|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power"/>
+  <text x="1600" y="495" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set C</text>
+  <text x="1600" y="510" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="553" font-size="11" fill="var(--text-secondary)" text-anchor="middle" class="bold-text">WLED Out 4 · M-GPIO6 · 12AWG pwr</text>
+  <circle cx="1440" cy="475" r="3" class="pin"/>
+  <text x="1448" y="479" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="495" r="3" class="pin"/>
+  <text x="1448" y="499" font-size="11" fill="var(--wire-data4)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="515" r="3" class="pin"/>
+  <text x="1448" y="519" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="540" r="3" class="pin"/>
+  <text x="1448" y="544" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- STRIP 5 -->
+  <rect x="1420" y="550" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="565" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 5 — EDGE SET D</text>
+  <rect x="1440" y="570" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #5 — Edge Set D|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power|DDP Slave output"/>
+  <text x="1600" y="595" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set D</text>
+  <text x="1600" y="610" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="653" font-size="11" fill="#a855f7" text-anchor="middle" class="bold-text">SLAVE Out 5 · S-GPIO4 · 12AWG pwr</text>
+  <circle cx="1440" cy="575" r="3" class="pin"/>
+  <text x="1448" y="579" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="595" r="3" class="pin"/>
+  <text x="1448" y="599" font-size="11" fill="var(--wire-data5)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="615" r="3" class="pin"/>
+  <text x="1448" y="619" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="640" r="3" class="pin"/>
+  <text x="1448" y="644" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- STRIP 6 -->
+  <rect x="1420" y="650" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="665" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 6 — EDGE SET E</text>
+  <rect x="1440" y="670" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #6 — Edge Set E|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power|DDP Slave output"/>
+  <text x="1600" y="695" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set E</text>
+  <text x="1600" y="710" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="753" font-size="11" fill="#a855f7" text-anchor="middle" class="bold-text">SLAVE Out 6 · S-GPIO5 · 12AWG pwr</text>
+  <circle cx="1440" cy="675" r="3" class="pin"/>
+  <text x="1448" y="679" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="695" r="3" class="pin"/>
+  <text x="1448" y="699" font-size="11" fill="var(--wire-data6)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="715" r="3" class="pin"/>
+  <text x="1448" y="719" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="740" r="3" class="pin"/>
+  <text x="1448" y="744" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- STRIP 7 -->
+  <rect x="1420" y="750" width="360" height="95" class="sec-border-dash" rx="4"/>
+  <text x="1440" y="765" font-size="13" fill="var(--text-secondary)" letter-spacing="2" class="black-text">STRIP 7 — EDGE SET F</text>
+  <rect x="1440" y="770" width="320" height="65" class="comp" rx="2"
+        data-info="Strip #7 — Edge Set F|280 × WS2815 12V NeoPixels|Max ~4.2A @ full white|12 AWG power|DDP Slave output"/>
+  <text x="1600" y="795" font-size="18" fill="var(--accent)" text-anchor="middle" class="black-text" letter-spacing="1">Edge Set F</text>
+  <text x="1600" y="810" font-size="14" fill="var(--text-primary)" text-anchor="middle" class="bold-text">280 × WS2815</text>
+  <text x="1600" y="853" font-size="11" fill="#a855f7" text-anchor="middle" class="bold-text">SLAVE Out 7 · S-GPIO6 · 12AWG pwr</text>
+  <circle cx="1440" cy="775" r="3" class="pin"/>
+  <text x="1448" y="779" font-size="11" fill="var(--wire-12v)" text-anchor="start" class="black-text">+12V</text>
+  <circle cx="1440" cy="795" r="3" class="pin"/>
+  <text x="1448" y="799" font-size="11" fill="var(--wire-data7)" text-anchor="start" class="black-text">DI</text>
+  <circle cx="1440" cy="815" r="3" class="pin"/>
+  <text x="1448" y="819" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="bold-text">BI</text>
+  <circle cx="1440" cy="840" r="3" class="pin"/>
+  <text x="1448" y="844" font-size="11" fill="var(--wire-gnd)" text-anchor="start" class="black-text">GND</text>
+
+  <!-- ================================================================
+       BOX 1: SIGNAL FLOW & WIRING SIZING
+       ================================================================ -->
+  <rect x="40" y="1080" width="640" height="620" class="sec-border-dash" rx="4"/>
+  <text x="62" y="1105" font-size="15" fill="var(--text-secondary)" letter-spacing="2" class="black-text">SIGNAL FLOW &amp; WIRING SIZING</text>
+
+  <text x="60" y="1135" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">SIGNAL FLOW (7 CHANNELS)</text>
+  <rect x="55" y="1145" width="610" height="18" fill="rgba(234,221,170,0.12)" rx="1"/>
+  <line x1="55" y1="1145" x2="665" y2="1145" stroke="var(--border)" stroke-width="1"/>
+  <line x1="55" y1="1163" x2="665" y2="1163" stroke="var(--border)" stroke-width="1"/>
+  <text x="63" y="1158" font-size="11" fill="var(--accent)" class="black-text">CH</text>
+  <text x="93" y="1158" font-size="11" fill="var(--accent)" class="black-text">GPIO (Board)</text>
+  <text x="185" y="1158" font-size="11" fill="var(--accent)" class="black-text">Buffer Path</text>
+  <text x="330" y="1158" font-size="11" fill="var(--accent)" class="black-text">R</text>
+  <text x="400" y="1158" font-size="11" fill="var(--accent)" class="black-text">Strip</text>
+  <text x="510" y="1158" font-size="11" fill="var(--accent)" class="black-text">LEDs</text>
+  <text x="560" y="1158" font-size="11" fill="var(--accent)" class="black-text">Cable</text>
+  <text x="610" y="1158" font-size="11" fill="var(--accent)" class="black-text">AWG</text>
+
+  <text x="63" y="1180" font-size="11" fill="var(--wire-data)" class="bold-text">1</text>
+  <text x="93" y="1180" font-size="11" fill="var(--wire-data)" class="bold-text">GPIO1 (Master)</text>
+  <text x="185" y="1180" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A1(2) → B1(18)</text>
+  <text x="330" y="1180" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1180" font-size="11" fill="var(--text-secondary)" class="bold-text">#1 Vertex</text>
+  <text x="510" y="1180" font-size="11" fill="var(--text-primary)" class="bold-text">60</text>
+  <text x="560" y="1180" font-size="11" fill="var(--text-secondary)" class="bold-text">~20m</text>
+  <text x="610" y="1180" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1187" x2="665" y2="1187" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1200" font-size="11" fill="var(--wire-data2)" class="bold-text">2</text>
+  <text x="93" y="1200" font-size="11" fill="var(--wire-data2)" class="bold-text">GPIO4 (Master)</text>
+  <text x="185" y="1200" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A2(3) → B2(17)</text>
+  <text x="330" y="1200" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1200" font-size="11" fill="var(--text-secondary)" class="bold-text">#2 Edge A</text>
+  <text x="510" y="1200" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1200" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1200" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1207" x2="665" y2="1207" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1220" font-size="11" fill="var(--wire-data3)" class="bold-text">3</text>
+  <text x="93" y="1220" font-size="11" fill="var(--wire-data3)" class="bold-text">GPIO5 (Master)</text>
+  <text x="185" y="1220" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A3(4) → B3(16)</text>
+  <text x="330" y="1220" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1220" font-size="11" fill="var(--text-secondary)" class="bold-text">#3 Edge B</text>
+  <text x="510" y="1220" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1220" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1220" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1227" x2="665" y2="1227" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1240" font-size="11" fill="var(--wire-data4)" class="bold-text">4</text>
+  <text x="93" y="1240" font-size="11" fill="var(--wire-data4)" class="bold-text">GPIO6 (Master)</text>
+  <text x="185" y="1240" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A4(5) → B4(15)</text>
+  <text x="330" y="1240" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1240" font-size="11" fill="var(--text-secondary)" class="bold-text">#4 Edge C</text>
+  <text x="510" y="1240" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1240" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1240" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1247" x2="665" y2="1247" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1260" font-size="11" fill="var(--wire-data5)" class="bold-text">5</text>
+  <text x="93" y="1260" font-size="11" fill="var(--wire-data5)" class="bold-text">GPIO4 (Slave)</text>
+  <text x="185" y="1260" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A5(6) → B5(14)</text>
+  <text x="330" y="1260" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1260" font-size="11" fill="var(--text-secondary)" class="bold-text">#5 Edge D</text>
+  <text x="510" y="1260" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1260" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1260" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1267" x2="665" y2="1267" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1280" font-size="11" fill="var(--wire-data6)" class="bold-text">6</text>
+  <text x="93" y="1280" font-size="11" fill="var(--wire-data6)" class="bold-text">GPIO5 (Slave)</text>
+  <text x="185" y="1280" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A6(7) → B6(13)</text>
+  <text x="330" y="1280" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1280" font-size="11" fill="var(--text-secondary)" class="bold-text">#6 Edge E</text>
+  <text x="510" y="1280" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1280" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1280" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1287" x2="665" y2="1287" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1300" font-size="11" fill="var(--wire-data7)" class="bold-text">7</text>
+  <text x="93" y="1300" font-size="11" fill="var(--wire-data7)" class="bold-text">GPIO6 (Slave)</text>
+  <text x="185" y="1300" font-size="11" fill="var(--text-secondary)" class="bold-text">U2: A7(8) → B7(12)</text>
+  <text x="330" y="1300" font-size="11" fill="var(--text-primary)" class="bold-text">47Ω</text>
+  <text x="400" y="1300" font-size="11" fill="var(--text-secondary)" class="bold-text">#7 Edge F</text>
+  <text x="510" y="1300" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="560" y="1300" font-size="11" fill="var(--text-secondary)" class="bold-text">~8m</text>
+  <text x="610" y="1300" font-size="11" fill="var(--text-secondary)" class="bold-text">18</text>
+  <line x1="55" y1="1307" x2="665" y2="1307" stroke="var(--border)" stroke-width="1"/>
+
+  <!-- Power Distribution -->
+  <text x="60" y="1335" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">POWER DISTRIBUTION</text>
+  <text x="60" y="1360" font-size="12" fill="var(--wire-5v)" class="bold-text">PSU 5V 3A  → ESP32-S3 Master Vin, ESP32-S3 Slave Vin, U2 VCC (pin 20)</text>
+  <text x="60" y="1378" font-size="12" fill="var(--wire-12v)" class="bold-text">PSU 12V 5A  → F1 7.5A → C1 1000µF → Strip #1</text>
+  <text x="60" y="1396" font-size="12" fill="var(--wire-12v)" class="bold-text">PSU 12V 50A → NTC1 (10Ω) → FB1 (7.5A/branch) → C2–C6,C8 → #2–#7</text>
+  <text x="60" y="1414" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--warn)">Optional injection (Strip #1, 20m):</tspan> 2× PSU 12V/5A — head + LED #31 mid-point; separate +12V rails (never bridge); 14 AWG branch.</text>
+  <text x="60" y="1432" font-size="12" fill="var(--wire-gnd)" class="bold-text">U2: DIR (pin 1) → VCC · OE (pin 19) → GND (A→B, all enabled)</text>
+  <text x="60" y="1450" font-size="12" fill="var(--wire-gnd)" class="bold-text">U2: A8(9) → GND (unused input) · B8(11) = N/C</text>
+
+  <!-- Power Calculations -->
+  <text x="60" y="1475" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">POWER CALCULATIONS</text>
+  <rect x="55" y="1485" width="610" height="18" fill="rgba(234,221,170,0.12)" rx="1"/>
+  <line x1="55" y1="1485" x2="665" y2="1485" stroke="var(--border)" stroke-width="1"/>
+  <line x1="55" y1="1503" x2="665" y2="1503" stroke="var(--border)" stroke-width="1"/>
+  <text x="63" y="1498" font-size="11" fill="var(--accent)" class="black-text">Strip</text>
+  <text x="180" y="1498" font-size="11" fill="var(--accent)" class="black-text">LEDs</text>
+  <text x="240" y="1498" font-size="11" fill="var(--accent)" class="black-text">Current</text>
+  <text x="370" y="1498" font-size="11" fill="var(--accent)" class="black-text">PSU</text>
+  <text x="480" y="1498" font-size="11" fill="var(--accent)" class="black-text">Power Wire</text>
+
+  <text x="63" y="1520" font-size="11" fill="var(--text-primary)" class="bold-text">#1 Vertex</text>
+  <text x="180" y="1520" font-size="11" fill="var(--text-secondary)" class="bold-text">60</text>
+  <text x="240" y="1520" font-size="11" fill="var(--text-secondary)" class="bold-text">0.9A @ full white</text>
+  <text x="370" y="1520" font-size="11" fill="var(--text-secondary)" class="bold-text">12V 5A</text>
+  <text x="480" y="1520" font-size="11" fill="var(--text-secondary)" class="bold-text">16 AWG</text>
+  <line x1="55" y1="1527" x2="665" y2="1527" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1540" font-size="11" fill="var(--text-primary)" class="bold-text">#2–#7 Edge</text>
+  <text x="180" y="1540" font-size="11" fill="var(--text-secondary)" class="bold-text">280 ea.</text>
+  <text x="240" y="1540" font-size="11" fill="var(--text-secondary)" class="bold-text">~4.2A ea. @ full white</text>
+  <text x="370" y="1540" font-size="11" fill="var(--text-secondary)" class="bold-text">12V 50A</text>
+  <text x="480" y="1540" font-size="11" fill="var(--text-secondary)" class="bold-text">12 AWG branch, 10 AWG trunk</text>
+  <line x1="55" y1="1547" x2="665" y2="1547" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="63" y="1560" font-size="11" fill="var(--text-primary)" class="black-text">TOTAL</text>
+  <text x="180" y="1560" font-size="11" fill="var(--text-primary)" class="black-text">1,740</text>
+  <text x="240" y="1560" font-size="11" fill="var(--text-primary)" class="black-text">~26.1A max (6× edge + vertex)</text>
+  <line x1="55" y1="1567" x2="665" y2="1567" stroke="var(--border)" stroke-width="1"/>
+
+  <!-- ================================================================
+       BOX 2: BILL OF MATERIALS & GPIO MAPPING
+       ================================================================ -->
+  <rect x="690" y="1080" width="650" height="620" class="sec-border-dash" rx="4"/>
+  <text x="712" y="1105" font-size="15" fill="var(--text-secondary)" letter-spacing="2" class="black-text">BILL OF MATERIALS &amp; GPIO MAPPING</text>
+
+  <text x="710" y="1140" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">BILL OF MATERIALS</text>
+  <text x="710" y="1165" font-size="12" fill="var(--text-primary)" class="bold-text">U1, U3 — 2× ESP32-S3-WROOM-1 N16R8 <tspan fill="var(--text-secondary)">(WLED Master + DDP Slave)</tspan></text>
+  <text x="710" y="1185" font-size="12" fill="var(--text-primary)" class="bold-text">U2   — SN74AHCT245N 20-pin DIP <tspan fill="var(--text-secondary)">(3.3V→5V octal transceiver, 7 ch used)</tspan></text>
+  <text x="710" y="1205" font-size="12" fill="var(--text-primary)" class="bold-text">R1   — 47Ω ¼W Metal Film <tspan fill="var(--text-secondary)">(×1, CH1 source-term @ U2 pin 18)</tspan></text>
+  <text x="710" y="1225" font-size="12" fill="var(--text-primary)" class="bold-text">R2–R7 — 47Ω ¼W Metal Film <tspan fill="var(--text-secondary)">(×6, source-term @ U2 pins 17→12)</tspan></text>
+  <text x="710" y="1245" font-size="12" fill="var(--text-primary)" class="bold-text">C1   — 1000µF 25V Electrolytic <tspan fill="var(--text-secondary)">(5A vertex rail)</tspan></text>
+  <text x="710" y="1265" font-size="12" fill="var(--text-primary)" class="bold-text">C2–C6,C8 — 1000µF 25V Electrolytic ×6 <tspan fill="var(--text-secondary)">(strip inputs)</tspan></text>
+  <text x="710" y="1285" font-size="12" fill="var(--text-primary)" class="bold-text">C7   — 100nF Ceramic <tspan fill="var(--text-secondary)">(U2 VCC decoupling)</tspan></text>
+  <text x="710" y="1305" font-size="12" fill="var(--text-primary)" class="bold-text">NTC1 — 10Ω / 10A Inrush Limiter <tspan fill="var(--text-secondary)">(series with 12V/50A rail)</tspan></text>
+  <text x="710" y="1325" font-size="12" fill="var(--text-primary)" class="bold-text">FB1  — 6-ch ATC/ATO Fuse Block <tspan fill="var(--text-secondary)">+ 6× 7.5A fuses</tspan></text>
+  <text x="710" y="1345" font-size="12" fill="var(--text-primary)" class="bold-text">LED  — WS2815 12V <tspan fill="var(--text-secondary)">60 + 6×280 = 1,740 total</tspan></text>
+  <text x="710" y="1365" font-size="12" fill="var(--text-primary)" class="bold-text">PSU  — 5V/3A + 12V/5A + 12V/50A <tspan fill="var(--text-secondary)">(3 isolated; optional injection upgrade: 2× 12V/5A — head + LED #31)</tspan></text>
+
+  <!-- GPIO Mapping -->
+  <text x="710" y="1405" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">GPIO MAPPING</text>
+  <rect x="705" y="1415" width="620" height="18" fill="rgba(234,221,170,0.12)" rx="1"/>
+  <line x1="705" y1="1415" x2="1325" y2="1415" stroke="var(--border)" stroke-width="1"/>
+  <line x1="705" y1="1433" x2="1325" y2="1433" stroke="var(--border)" stroke-width="1"/>
+  <text x="713" y="1428" font-size="11" fill="var(--accent)" class="black-text">GPIO</text>
+  <text x="783" y="1428" font-size="11" fill="var(--accent)" class="black-text">Buffer</text>
+  <text x="863" y="1428" font-size="11" fill="var(--accent)" class="black-text">Channel</text>
+  <text x="953" y="1428" font-size="11" fill="var(--accent)" class="black-text">Strip</text>
+  <text x="1103" y="1428" font-size="11" fill="var(--accent)" class="black-text">LEDs</text>
+  <text x="1173" y="1428" font-size="11" fill="var(--accent)" class="black-text">Type</text>
+
+  <text x="713" y="1450" font-size="11" fill="var(--wire-data)" class="bold-text">GPIO1 (M)</text>
+  <text x="783" y="1450" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH1</text>
+  <text x="863" y="1450" font-size="11" fill="var(--wire-data)" class="bold-text">CH1</text>
+  <text x="953" y="1450" font-size="11" fill="var(--text-secondary)" class="bold-text">#1</text>
+  <text x="1103" y="1450" font-size="11" fill="var(--text-primary)" class="bold-text">60</text>
+  <text x="1173" y="1450" font-size="11" fill="var(--text-secondary)" class="bold-text">Vertex</text>
+  <line x1="705" y1="1457" x2="1325" y2="1457" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1470" font-size="11" fill="var(--wire-data2)" class="bold-text">GPIO4 (M)</text>
+  <text x="783" y="1470" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH2</text>
+  <text x="863" y="1470" font-size="11" fill="var(--wire-data2)" class="bold-text">CH2</text>
+  <text x="953" y="1470" font-size="11" fill="var(--text-secondary)" class="bold-text">#2</text>
+  <text x="1103" y="1470" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1470" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge A</text>
+  <line x1="705" y1="1477" x2="1325" y2="1477" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1490" font-size="11" fill="var(--wire-data3)" class="bold-text">GPIO5 (M)</text>
+  <text x="783" y="1490" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH3</text>
+  <text x="863" y="1490" font-size="11" fill="var(--wire-data3)" class="bold-text">CH3</text>
+  <text x="953" y="1490" font-size="11" fill="var(--text-secondary)" class="bold-text">#3</text>
+  <text x="1103" y="1490" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1490" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge B</text>
+  <line x1="705" y1="1497" x2="1325" y2="1497" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1510" font-size="11" fill="var(--wire-data4)" class="bold-text">GPIO6 (M)</text>
+  <text x="783" y="1510" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH4</text>
+  <text x="863" y="1510" font-size="11" fill="var(--wire-data4)" class="bold-text">CH4</text>
+  <text x="953" y="1510" font-size="11" fill="var(--text-secondary)" class="bold-text">#4</text>
+  <text x="1103" y="1510" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1510" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge C</text>
+  <line x1="705" y1="1517" x2="1325" y2="1517" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1530" font-size="11" fill="var(--wire-data5)" class="bold-text">GPIO4 (S)</text>
+  <text x="783" y="1530" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH5</text>
+  <text x="863" y="1530" font-size="11" fill="var(--wire-data5)" class="bold-text">CH5</text>
+  <text x="953" y="1530" font-size="11" fill="var(--text-secondary)" class="bold-text">#5</text>
+  <text x="1103" y="1530" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1530" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge D</text>
+  <line x1="705" y1="1537" x2="1325" y2="1537" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1550" font-size="11" fill="var(--wire-data6)" class="bold-text">GPIO5 (S)</text>
+  <text x="783" y="1550" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH6</text>
+  <text x="863" y="1550" font-size="11" fill="var(--wire-data6)" class="bold-text">CH6</text>
+  <text x="953" y="1550" font-size="11" fill="var(--text-secondary)" class="bold-text">#6</text>
+  <text x="1103" y="1550" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1550" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge E</text>
+  <line x1="705" y1="1557" x2="1325" y2="1557" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="713" y="1570" font-size="11" fill="var(--wire-data7)" class="bold-text">GPIO6 (S)</text>
+  <text x="783" y="1570" font-size="11" fill="var(--text-secondary)" class="bold-text">U2 CH7</text>
+  <text x="863" y="1570" font-size="11" fill="var(--wire-data7)" class="bold-text">CH7</text>
+  <text x="953" y="1570" font-size="11" fill="var(--text-secondary)" class="bold-text">#7</text>
+  <text x="1103" y="1570" font-size="11" fill="var(--text-primary)" class="bold-text">280</text>
+  <text x="1173" y="1570" font-size="11" fill="var(--text-secondary)" class="bold-text">Edge F</text>
+  <line x1="705" y1="1577" x2="1325" y2="1577" stroke="var(--border)" stroke-width="1"/>
+
+  <!-- ================================================================
+       BOX 3: ENGINEERING NOTES & REVISION HISTORY
+       ================================================================ -->
+  <rect x="1350" y="1080" width="650" height="620" class="sec-border-dash" rx="4"/>
+  <text x="1372" y="1105" font-size="15" fill="var(--text-secondary)" letter-spacing="2" class="black-text">ENGINEERING NOTES &amp; REVISION HISTORY</text>
+
+  <text x="1370" y="1140" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">ENGINEERING NOTES</text>
+  <text x="1370" y="1163" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">1.</tspan> Common GND mandatory — all 3 PSU negatives tied.</text>
+  <text x="1370" y="1181" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">2.</tspan> VCC (pin 20) on U2 = 5V. DIR (pin 1) = VCC → A-to-B direction.</text>
+  <text x="1370" y="1199" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">3.</tspan> U2: OE (pin 19) → GND (all 8 channels enabled).</text>
+  <text x="1370" y="1217" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">4.</tspan> U2: A8(9) → GND (unused input). B8(11) = N/C (spare output).</text>
+  <text x="1370" y="1235" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">5.</tspan> DDP Network: Master ESP32 handles all FX calc. Slave ESP32 is receiver only.</text>
+  <text x="1370" y="1253" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">6.</tspan> WS2815 BI: HEAD pixel only → GND (downstream keep BI ← DO chain).</text>
+  <text x="1370" y="1271" font-size="12" fill="var(--warn)" class="bold-text"><tspan fill="var(--text-primary)">7.</tspan> FB1: 6× 7.5A fuses protect 12 AWG from 50A PSU.</text>
+  <text x="1370" y="1289" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">8.</tspan> C2–C6,C8 bypass caps (1000µF) at each strip input.</text>
+  <text x="1370" y="1307" font-size="12" fill="var(--warn)" class="bold-text"><tspan fill="var(--text-primary)">9.</tspan> ~4.2A/strip (WS2815 = 10–15mA/pixel @ 12V, 280 LEDs).</text>
+  <text x="1370" y="1325" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">10.</tspan> GPIO 0,3,45,46 / 35–37 / 19–20 avoided.</text>
+  <text x="1370" y="1343" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">11.</tspan> WLED: Master has 4 local outputs + 3 DDP destinations to Slave.</text>
+  <text x="1370" y="1361" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">12.</tspan> Power injection if strip run exceeds ~10m — Strip #1 (20m) optional: 2× 12V/5A PSU at head + LED #31.</text>
+  <text x="1370" y="1379" font-size="12" fill="var(--warn)" class="bold-text"><tspan fill="var(--text-primary)">13.</tspan> C7 (100nF) close to U2 VCC — prevents latch-up.</text>
+  <text x="1370" y="1397" font-size="12" fill="var(--warn)" class="bold-text"><tspan fill="var(--text-primary)">14.</tspan> CH1 Vertex 20m run: single-ended 800kHz past reliable length. Shielded twisted pair; bench-verify waveform.</text>
+  <text x="1370" y="1415" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">15.</tspan> R1–R7 on controller PCB ≤20mm from U2 B-outputs (source-end termination).</text>
+  <text x="1370" y="1433" font-size="12" fill="var(--warn)" class="bold-text"><tspan fill="var(--text-primary)">16.</tspan> NTC1 (10Ω/10A) series 12V/50A rail — limits inrush from 7× 1000µF bypass caps.</text>
+  <text x="1370" y="1451" font-size="12" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">17.</tspan> Strip #1 inject (opt): 2× 12V/5A PSU — head + LED #31; separate V+ rails (no bridge); GND to common bus.</text>
+
+  <!-- Revision History -->
+  <text x="1370" y="1466" font-size="14" fill="var(--accent)" class="black-text" letter-spacing="1">REVISION HISTORY</text>
+  <text x="1370" y="1494" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.0</tspan> — Initial release.</text>
+  <text x="1370" y="1514" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.1</tspan> — Added fuse block (FB1) with 7.5A blade fuses.</text>
+  <text x="1370" y="1534" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.2</tspan> — Revised resistors + added C7 decoupling cap.</text>
+  <text x="1370" y="1554" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.3</tspan> — Replaced 2× SN74AHCT125N with 1× SN74HCT245N.</text>
+  <text x="1370" y="1574" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.4</tspan> — Dual ESP32-S3 with DDP (Master/Slave); single SN74AHCT245N; BI re-routed to GND.</text>
+  <text x="1370" y="1594" font-size="13" fill="var(--text-secondary)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.5</tspan> — 7 strips (280 LEDs each edge); CH7 via U2 A7/B7; Slave GPIO6;<tspan x="1430" dy="16">R7+C8+F7 added; NTC1 inrush limiter; PCB box expanded; C8 taps aligned;</tspan><tspan x="1430" dy="16">Notes #6/#14/#15/#16; R2–R7 corrected 100Ω → 47Ω (prototype parity).</tspan></text>
+  <text x="1370" y="1660" font-size="13" fill="var(--accent)" class="bold-text"><tspan fill="var(--text-primary)">Rev 1.6</tspan> — Upgrade the power supply from 5A to 10A.</tspan></text>
+
+  </g>
+</svg>
+</div>
+</div>
+<!-- Zoom Controls -->
+<div id="zoom-controls">
+  <button class="zoom-btn" id="zoom-in" title="Zoom In (Ctrl+Shift++)">+</button>
+  <button class="zoom-btn" id="zoom-out" title="Zoom Out (Ctrl+Shift+−)">−</button>
+  <span id="zoom-level">100%</span>
+  <button class="zoom-btn fit-btn" id="zoom-fit" title="Fit to Screen (Ctrl+Shift+0)">FIT</button>
+  <button class="zoom-btn fit-btn" id="export-svg" title="Export as Standalone SVG" style="margin-left: 12px; color: var(--wire-data);">Export SVG</button>
+  <button class="zoom-btn fit-btn" id="export-png" title="Export as High-Res PNG" style="color: var(--wire-5v);">Export PNG</button>
+</div>
+<div class="zoom-shortcut-hint">Ctrl+Shift+ +/−/0 · Scroll to zoom · Drag to pan</div>
+<!-- Tooltip -->
+<div class="tip" id="tip">
+  <div class="ttl" id="tipTtl">Component Name</div>
+  <div class="desc" id="tipDesc">Description</div>
+</div>
+<script>
+  const tip = document.getElementById('tip');
+  const tipTtl = document.getElementById('tipTtl');
+  const tipDesc = document.getElementById('tipDesc');
+  document.querySelectorAll('[data-info]').forEach(el => {
+    el.addEventListener('mouseenter', (e) => {
+      const t = e.target.closest('[data-info]') || e.target;
+      const info = t.getAttribute('data-info');
+      if (info) {
+        const parts = info.split('|');
+        tipTtl.textContent = parts[0];
+        tipDesc.innerHTML = parts.slice(1).join('<br>');
+        tip.classList.add('on');
+      }
+    });
+    el.addEventListener('mouseleave', () => tip.classList.remove('on'));
+  });
+  const container = document.getElementById('schematic-container');
+  const wrapper = document.getElementById('svg-wrapper');
+  const zoomLevelEl = document.getElementById('zoom-level');
+  let scale = 1, panX = 0, panY = 0, isPanning = false, startX, startY;
+  const MIN_SCALE = 0.1, MAX_SCALE = 4, ZOOM_STEP = 0.15;
+  const SVG_W = 2400, SVG_H = 1900;
+  function updateTransform() {
+    wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    zoomLevelEl.textContent = Math.round(scale * 100) + '%';
+  }
+  function zoomTo(ns, cx, cy) {
+    ns = Math.max(MIN_SCALE, Math.min(MAX_SCALE, ns));
+    if (cx !== undefined && cy !== undefined) {
+      const r = ns / scale;
+      panX = cx - (cx - panX) * r;
+      panY = cy - (cy - panY) * r;
+    }
+    scale = ns;
+    updateTransform();
+  }
+  function zoomIn() { const r = container.getBoundingClientRect(); zoomTo(scale * (1 + ZOOM_STEP), r.width / 2, r.height / 2); }
+  function zoomOut() { const r = container.getBoundingClientRect(); zoomTo(scale * (1 - ZOOM_STEP), r.width / 2, r.height / 2); }
+  function fitToScreen() {
+    const r = container.getBoundingClientRect();
+    scale = Math.min(r.width / SVG_W, r.height / SVG_H) * 0.95;
+    panX = (r.width - SVG_W * scale) / 2;
+    panY = (r.height - SVG_H * scale) / 2;
+    updateTransform();
+  }
+  document.getElementById('zoom-in').addEventListener('click', zoomIn);
+  document.getElementById('zoom-out').addEventListener('click', zoomOut);
+  document.getElementById('zoom-fit').addEventListener('click', fitToScreen);
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = container.getBoundingClientRect();
+    zoomTo(scale * (e.deltaY > 0 ? (1 - ZOOM_STEP) : (1 + ZOOM_STEP)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  container.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.comp') || e.target.closest('#zoom-controls')) return;
+    isPanning = true; startX = e.clientX - panX; startY = e.clientY - panY;
+    container.classList.add('grabbing');
+  });
+  window.addEventListener('mousemove', (e) => { if (!isPanning) return; panX = e.clientX - startX; panY = e.clientY - startY; updateTransform(); });
+  window.addEventListener('mouseup', () => { isPanning = false; container.classList.remove('grabbing'); });
+  let lastTouchDist = 0;
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) { isPanning = true; startX = e.touches[0].clientX - panX; startY = e.touches[0].clientY - panY; }
+    else if (e.touches.length === 2) { isPanning = false; const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY; lastTouchDist = Math.sqrt(dx*dx+dy*dy); }
+  }, { passive: false });
+  container.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isPanning) { panX = e.touches[0].clientX - startX; panY = e.touches[0].clientY - startY; updateTransform(); }
+    else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx+dy*dy), r = container.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX)/2 - r.left, cy = (e.touches[0].clientY + e.touches[1].clientY)/2 - r.top;
+      zoomTo(scale * (dist / lastTouchDist), cx, cy); lastTouchDist = dist;
+    }
+  }, { passive: false });
+  container.addEventListener('touchend', () => { isPanning = false; });
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey) {
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
+      else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomOut(); }
+      else if (e.key === '0' || e.key === ')') { e.preventDefault(); fitToScreen(); }
+    }
+  });
+  window.addEventListener('load', () => { setTimeout(fitToScreen, 100); });
+  function getSvgString() {
+    const clone = document.getElementById('schematic-svg').cloneNode(true);
+    const styleTag = document.querySelector('style');
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = styleTag ? styleTag.innerHTML : '';
+    defs.appendChild(style);
+    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bgRect.setAttribute("width", "100%"); bgRect.setAttribute("height", "100%"); bgRect.setAttribute("fill", "#060a0b");
+    clone.insertBefore(bgRect, clone.firstChild);
+    clone.insertBefore(defs, clone.firstChild);
+    if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    return new XMLSerializer().serializeToString(clone);
+  }
+  document.getElementById('export-svg').addEventListener('click', () => {
+    const blob = new Blob([getSvgString()], {type: "image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a"); link.href = url; link.download = "NaoDec_WS2815_LED_Controller_Rev1.5.svg";
+    document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+  });
+  document.getElementById('export-png').addEventListener('click', () => {
+    const btn = document.getElementById('export-png');
+    const origText = btn.textContent; btn.textContent = "WAIT..."; btn.style.opacity = "0.5";
+    const canvas = document.createElement("canvas"); canvas.width = SVG_W; canvas.height = SVG_H;
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([getSvgString()], {type: "image/svg+xml;charset=utf-8"}));
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0); URL.revokeObjectURL(url);
+      try {
+        const link = document.createElement("a"); link.href = canvas.toDataURL("image/png", 1.0);
+        link.download = "NaoDec_WS2815_LED_Controller_Rev1.5.png";
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } catch (e) {
+        console.error("PNG export error:", e.message);
+      } finally { btn.textContent = origText; btn.style.opacity = "1"; }
+    };
+    img.src = url;
+  });
+</script>
+</body>
+</html>
