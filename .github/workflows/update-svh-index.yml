@@ -1,0 +1,94 @@
+name: Update smart-vertical-hydroponics/index.html
+
+on:
+  push:
+    branches: [Smart-Vertical-Hydroponics]
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate smart-vertical-hydroponics/index.html
+        id: gen
+        run: |
+          set -euo pipefail
+          cd smart-vertical-hydroponics
+          tmp=$(mktemp)
+          {
+            cat <<'HEAD'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Smart Vertical Hydroponics — Schematics Index</title>
+            <style>
+              :root {
+                color-scheme: light dark;
+                --bg:        #ffffff;
+                --fg:        #222222;
+                --muted:     #888888;
+                --rule:      #dddddd;
+                --link:      #0645ad;
+                --link-hover:#0b63d6;
+                --code-bg:   rgba(128,128,128,0.15);
+              }
+              @media (prefers-color-scheme: dark) {
+                :root {
+                  --bg:        #0b1113;
+                  --fg:        #e6edef;
+                  --muted:     #8eb5b8;
+                  --rule:      rgba(142, 181, 184, 0.25);
+                  --link:      #88e2d6;
+                  --link-hover:#eaddaa;
+                  --code-bg:   rgba(142, 181, 184, 0.15);
+                }
+              }
+              body { font-family: system-ui, sans-serif; max-width: 720px;
+                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6;
+                     background: var(--bg); color: var(--fg); }
+              h1 { border-bottom: 1px solid var(--rule); padding-bottom: .4rem; }
+              ul { padding-left: 1.2rem; }
+              li { margin: .3rem 0; }
+              a { color: var(--link); text-decoration: none; }
+              a:hover { color: var(--link-hover); text-decoration: underline; }
+              footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+              code { background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+            </style>
+          </head>
+          <body>
+            <h1>Smart Vertical Hydroponics — Schematics Index</h1>
+            <p>Rendered HTML documents in this repository. Click to open.</p>
+            <ul>
+          HEAD
+            for f in $(ls *.html 2>/dev/null | grep -v '^index\.html$' | sort); do
+              printf '    <li><a href="%s">%s</a></li>\n' "$f" "$f"
+            done
+            cat <<'TAIL'
+            </ul>
+            <footer>Auto-generated — see <code>.github/workflows/update-svh-index.yml</code>.</footer>
+          </body>
+          </html>
+          TAIL
+          } > "$tmp"
+
+          if ! cmp -s "$tmp" index.html; then
+            mv "$tmp" index.html
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.gen.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add smart-vertical-hydroponics/index.html
+          git commit -m "chore: regenerate smart-vertical-hydroponics/index.html"
+          git push
