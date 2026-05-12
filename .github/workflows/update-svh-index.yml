@@ -2,7 +2,8 @@ name: Update smart-vertical-hydroponics/index.html
 
 on:
   push:
-    branches: [Smart-Vertical-Hydroponics]
+    branches: [main, Smart-Vertical-Hydroponics]
+    paths: [smart-vertical-hydroponics/**]
 
 permissions:
   contents: write
