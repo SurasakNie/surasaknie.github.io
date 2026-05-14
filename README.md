@@ -8,7 +8,7 @@ Published at <https://surasaknie.github.io/project-index/> (auto-indexed).
 
 - [NaoDec](https://surasaknie.github.io/naodec/) — Wiring and schematics documents for the NaoDec project.
 - [Dronekyll](https://surasaknie.github.io/dronekyll/) — Product documents and rocket wireframe for the Dronekyll project.
-- [Smart Vertical Hydroponics](https://surasaknie.github.io/smart-vertical-hydroponics/) — Schematics for the Smart Vertical Hydroponics tower.
+- [Smart Vertical Hydroponics](https://surasaknie.github.io/Smart-Vertical-Hydroponics/) — Schematics for the Smart Vertical Hydroponics tower.
 
 ## How it works
 
